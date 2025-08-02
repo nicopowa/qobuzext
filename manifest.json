@@ -9,17 +9,8 @@
 		"default_popup": "popup.qobuz.html",
 		"default_title": "QobuzExt"
 	},
-	"permissions": [
-		"tabs",
-		"storage",
-		"downloads",
-		"activeTab",
-		"webRequest",
-		"offscreen"
-	],
-	"host_permissions": [
-		"https://*.qobuz.com/*"
-	],
+	"permissions": ["storage", "downloads", "webRequest", "offscreen"],
+	"host_permissions": ["https://*.qobuz.com/*"],
 	"background": {
 		"service_worker": "background.qobuz.js",
 		"type": "module"
@@ -37,5 +28,13 @@
 			"matches": ["https://play.qobuz.com/*"],
 			"resources": ["inject.qobuz.js"]
 		}
-	]
+	],
+	"commands": {
+		"reload": {
+			"suggested_key": {
+				"default": "Alt+Q"
+			},
+			"description": "reload"
+		}
+	}
 }

@@ -8,10 +8,10 @@ class QobuzOffscreenProcessor extends BaseOffscreenProcessor {
 	
 	}
 
-	async process(fetchUrl, metadata, messageId, cover) {
+	async process(dat, metadata, messageId, cover) {
 
 		return await this.flacProcessor.process(
-			fetchUrl,
+			dat,
 			metadata,
 			messageId,
 			cover

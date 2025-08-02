@@ -1,6 +1,6 @@
 const browser = chrome;
 
-import {Backstage, BaseQueueManager} from "./common/back.js";
+import {Backstage} from "./common/back.js";
 
 class Util {
 
@@ -120,98 +120,57 @@ class Util {
 
 }
 
-class QobuzQueueManager extends BaseQueueManager {
-
-	async downloadTask(task) {
-
-		const trackData = await this.main.trackUrl(
-			task.track.id,
-			task.quality
-		);
-
-		if(!trackData.url)
-			throw new Error("no download url");
-
-		await this.startDownload(
-			trackData.url,
-			task
-		);
-	
-	}
-
-}
-
 class QobuzBackground extends Backstage {
 
 	constructor() {
 
-		super();
+		super("offscreen.qobuz.html");
+
+		this.urlBase = "https://play.qobuz.com/";
 
 		this.dat = {
-			auth: false,
+			...this.dat,
+			heads: false,
 			appId: "",
 			token: "",
 			secret: ""
 		};
 
-		this.queue = new QobuzQueueManager(this);
+		this.heads("https://www.qobuz.com/api.json/0.2/*");
 
-		this.heading = this.heads.bind(this);
-		this.bundling = this.bundle.bind(this);
+		this.bundler = this.bundle.bind(this);
+		this.bundling();
 
-		this.init();
-	
-	}
-	
-	async init() {
-
-		browser.webRequest.onBeforeSendHeaders.addListener(
-			this.heading,
-			{
-				urls: ["https://www.qobuz.com/api.json/0.2/*"]
-			},
-			[
-				"requestHeaders"
-			]
-		);
-
-		this.bundleHook();
-
-		const dataUrls = {
+		this.watch({
+			// single track qobuz.com main domain
 			"/album/get": this.handleAlbum,
 			"/artist/page": this.handleArtist,
-			"/artist/getReleases": this.handleReleases
-
-		};
-
-		Object.entries(dataUrls)
-		.forEach(([url, cbk]) =>
-			this.track(
-				url,
-				cbk.bind(this)
-			));
-
-		await this.queue.init("offscreen.qobuz.html");
+			"/artist/getReleases": this.handleReleases,
+			// label
+			"/playlist/get?": this.handlePlaylist,
+			"/track/getList": this.handleTracklist
+			// search results
+		});
 	
 	}
 
-	heads(evt) {
+	heading(evt) {
 
 		const appIdHeader = evt.requestHeaders.find(reqHeader =>
-			reqHeader.name === "X-App-Id");
+			reqHeader.name === "X-App-Id")?.value;
 
 		const userAuthTokenHeader = evt.requestHeaders.find(reqHeader =>
-			reqHeader.name === "X-User-Auth-Token");
+			reqHeader.name === "X-User-Auth-Token")?.value;
 
 		if(appIdHeader && userAuthTokenHeader) {
 
-			if(this.dat.appId !== appIdHeader.value || this.dat.token !== userAuthTokenHeader.value) {
+			if(this.dat.appId !== appIdHeader || this.dat.token !== userAuthTokenHeader) {
 
-				console.log("auth header");
+				console.log("auth data");
 			
-				this.dat.appId = appIdHeader.value;
-				this.dat.token = userAuthTokenHeader.value;
-				this.dat.auth = true;
+				this.dat.appId = appIdHeader;
+				this.dat.token = userAuthTokenHeader;
+				this.dat.heads = true;
 			
 			}
 
@@ -223,12 +182,12 @@ class QobuzBackground extends Backstage {
 
 	}
 
-	bundleHook() {
+	bundling() {
 
 		browser.webRequest.onCompleted.addListener(
-			this.bundling,
+			this.bundler,
 			{
-				urls: ["https://play.qobuz.com/*/bundle.js"]
+				urls: [this.urlBase + "*/bundle.js"]
 			}
 		);
 	
@@ -236,9 +195,9 @@ class QobuzBackground extends Backstage {
 
 	async bundle(res) {
 
-		console.log("parse bundle");
+		// console.log("bundle");
 
-		browser.webRequest.onCompleted.removeListener(this.bundling);
+		browser.webRequest.onCompleted.removeListener(this.bundler);
 
 		let bundleCode = await (await fetch(res.url)).text();
 
@@ -269,9 +228,7 @@ class QobuzBackground extends Backstage {
 					}
 				
 				}
-				catch(err) {
-					// silent
-				}
+				catch(err) {} // silent
 			
 			}
 		
@@ -281,9 +238,11 @@ class QobuzBackground extends Backstage {
 
 		if(!secrets.size) {
 
+			this.icon.back("#ce2626");
+
 			console.error("no secrets");
 
-			this.icon.back("#ce2626");
+			this.dat.auth = false;
 
 			return;
 		
@@ -323,24 +282,28 @@ class QobuzBackground extends Backstage {
 
 				this.dat.secret = secret;
 
+				this.dat.auth = true;
+
+				this.ready();
+
 				continue;
 			
 			}
-			catch(err) {
-				// silent
-			}
+			catch(err) {} // silent
 		
 		}
 
 		if(!this.dat.secret) {
 
-			console.error("secret fail");
+			this.dat.auth = false;
 
 			this.icon.back("#ce2626");
 
+			console.error("secret fail");
+
 		}
 
-		this.bundleHook();
+		this.bundling();
 
 	}
 
@@ -350,12 +313,12 @@ class QobuzBackground extends Backstage {
 			? "?" + new URLSearchParams(params) : "";
 		
 		const res = await fetch(
-			// must keep www
+			// keep www
 			`https://www.qobuz.com/api.json/0.2${endpoint}${query}`,
 			{
 				headers: {
 					"Content-Type": "application/json",
-					...(this.dat.auth ? {
+					...(this.dat.heads ? {
 						"X-User-Auth-Token": this.dat.token,
 						"X-App-Id": this.dat.appId
 					} : {})
@@ -363,13 +326,15 @@ class QobuzBackground extends Backstage {
 			}
 		);
 
-		if(!res.ok)
-			throw new Error(`http ${res.status}: ${res.statusText}`);
+		if(!res.ok) {
+
+			this.handleError(`http ${res.status}: ${res.statusText}`);
+
+			return null;
+		
+		}
 		
 		const dat = await res.json();
-
-		if(dat.status && dat.status !== "success")
-			throw new Error(dat.message || "api request failed");
 
 		return dat;
 	
@@ -389,6 +354,8 @@ class QobuzBackground extends Backstage {
 
 		this.mediaHint();
 
+		this.syncMedia();
+
 	}
 
 	handleReleases(dat) {
@@ -402,6 +369,8 @@ class QobuzBackground extends Backstage {
 			"releases",
 			this.media
 		);
+
+		this.syncMedia();
 	
 	}
 
@@ -417,9 +386,52 @@ class QobuzBackground extends Backstage {
 			this.media
 		);
 
+		this.syncMedia();
+
 	}
 
-	async trackUrl(trackId, formatId) {
+	handleLabel(dat) {
+
+	}
+
+	handlePlaylist(dat) {
+
+		this.media = {
+			...dat,
+			extype: "playlist"
+		};
+
+		console.log(
+			"playlist",
+			this.media
+		);
+
+	}
+
+	handleTracklist(dat) {
+
+		if(this.media.extype === "playlist") {
+
+			this.media.tracks = dat.tracks;
+
+			console.log(
+				"tracklist",
+				this.media
+			);
+
+		}
+
+		this.syncMedia();
+
+	}
+
+	trackList() {
+
+		return this?.media?.tracks?.items || [];
+	
+	}
+
+	async getTrackUrl(trackId, formatId) {
 
 		const unix = Math.floor(Date.now() / 1000);
 		const sig = Util.md5(`trackgetFileUrlformat_id${formatId}intentstreamtrack_id${trackId}${unix}${this.dat.secret}`);
@@ -437,7 +449,25 @@ class QobuzBackground extends Backstage {
 	
 	}
 
-	filename(track, album) {
+	getCoverUrl(media) {
+
+		return (media.album || this.media)?.image?.small;
+
+	}
+
+	getFilePath(track, album) {
+
+		// album?.artists.length === 0
+		// album?.subtitle.toLowerCase() === "various artists"
+		const variousArtists = album.artist?.name.toLowerCase()
+		.startsWith("various");
+
+		const artistName = this.sanitize(variousArtists ? "Various Artists" : album?.artist?.name || album?.composer?.name);
+
+		const albumTitle = this.sanitize(this.albumTitle(album));
+
+		const albumYear = new Date(album.release_date_original || 0)
+		.getFullYear();
 
 		const trackNum = String(track.track_number || 1)
 		.padStart(
@@ -445,89 +475,20 @@ class QobuzBackground extends Backstage {
 			"0"
 		);
 
-		const ext = ".flac";
-		const title = this.sanitize(this.trackName(track));
-		const artist = this.sanitize(track.performer?.name || album?.artist?.name || "Unknown");
-		const albumTitle = this.sanitize(album?.title || "Unknown");
-		const year = new Date(album.release_date_original)
-		.getFullYear();
-
-		return `Qobuz/${artist}/${albumTitle} (${year})/${trackNum}. ${title}${ext}`;
-	
-	}
-	
-	async handleDownload(msg) {
-
-		try {
-
-			const {
-				mediaType, mediaId, quality
-			} = msg;
-
-			const coverBlob = await this.getCover(this.media.image.small);
-
-			if(mediaType === "track") {
-
-				const track = this.media?.tracks.items.find(track =>
-					track.id === mediaId);
-
-				if(track) {
-
-					this.trackDownload(
-						track,
-						this.media,
-						quality,
-						coverBlob
-					);
-
-				}
-			
-			}
-			else if(mediaType === "album") {
-
-				for(const track of this.media.tracks?.items || []) {
-
-					this.trackDownload(
-						track,
-						this.media,
-						quality,
-						coverBlob
-					);
-				
-				}
-			
-			}
-			else {
-
-				return {
-					ok: false,
-					error: "invalid media type"
-				};
-			
-			}
-
-			return {
-				ok: true
-			};
+		const fileName = this.sanitize(`${trackNum}. ${variousArtists ? track?.performer.name + " -" : ""} ${this.trackTitle(track)}`);
 		
-		}
-		catch(err) {
+		const fileExt = ".flac";
 
-			return {
-				ok: false,
-				error: err.message
-			};
-		
-		}
-	
+		return `Qobuz/${artistName}/${albumTitle} (${albumYear})/${fileName}${fileExt}`;
+
 	}
 
-	trackMeta(track, album) {
+	getMetaData(track, album) {
 
 		return {
-			"TITLE": track.title || "Unknown",
+			"TITLE": this.trackTitle(track),
 			"ARTIST": track.performer?.name || album?.artist?.name || "Unknown",
-			"ALBUM": album?.title || "Unknown",
+			"ALBUM": this.albumTitle(album),
 			"TRACKNUMBER": String(track.track_number || 1),
 			"ALBUMARTIST": album?.artist?.name || "Unknown",
 			"DATE": new Date(album?.release_date_original || 0)
