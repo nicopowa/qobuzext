@@ -1,3 +1,5 @@
+import {BasePopup} from "./common/pops.js";
+
 class QobuzPopup extends BasePopup {
 
 	constructor() {
@@ -96,13 +98,12 @@ class QobuzPopup extends BasePopup {
 		.join("");
 
 		this.elements.media.querySelectorAll(".download-btn")
-		.forEach(btn => 
+		.forEach(btn =>
 			btn.addEventListener(
 				"click",
 				evt =>
 					this.downloadMedia(evt.target)
-			)
-		);
+			));
 
 	}
 
@@ -158,7 +159,7 @@ class QobuzPopup extends BasePopup {
 					<div class="track-artist">${(track.performer || track.composer).name}</div>
 					${more ? `<div class="track-album">${track?.album.title}</div>` : ""}
 				</div>
-				<button class="track-download download-btn" data-type="track" data-id="${track.id}"></button>
+				<button class="track-download download-btn" data-type="track" data-id="${track.id}"${!track.streamable ? " disabled" : ""}></button>
 			</div>
 		`;
 	

@@ -1,5 +1,4 @@
-const browser = chrome;
-
+import {browser, DEBUG} from "./common/vars.js";
 import {Backstage} from "./common/back.js";
 
 class Util {
@@ -127,6 +126,7 @@ class QobuzBackground extends Backstage {
 		super("offscreen.qobuz.html");
 
 		this.urlBase = "https://play.qobuz.com/";
+		this.quality = "6";
 
 		this.dat = {
 			...this.dat,
@@ -166,7 +166,8 @@ class QobuzBackground extends Backstage {
 
 			if(this.dat.appId !== appIdHeader || this.dat.token !== userAuthTokenHeader) {
 
-				console.log("auth data");
+				if(DEBUG)
+					console.log("auth data");
 			
 				this.dat.appId = appIdHeader;
 				this.dat.token = userAuthTokenHeader;
@@ -195,7 +196,7 @@ class QobuzBackground extends Backstage {
 
 	async bundle(res) {
 
-		// console.log("bundle");
+		// if(DEBUG) console.log("bundle");
 
 		browser.webRequest.onCompleted.removeListener(this.bundler);
 
@@ -240,7 +241,8 @@ class QobuzBackground extends Backstage {
 
 			this.icon.back("#ce2626");
 
-			console.error("no secrets");
+			if(DEBUG)
+				console.error("no secrets");
 
 			this.dat.auth = false;
 
@@ -278,7 +280,7 @@ class QobuzBackground extends Backstage {
 					}
 				);
 
-				console.log("secret found");
+				// if(DEBUG) console.log("secret found");
 
 				this.dat.secret = secret;
 
@@ -299,7 +301,9 @@ class QobuzBackground extends Backstage {
 
 			this.icon.back("#ce2626");
 
-			console.error("secret fail");
+			this.handleError({
+				error: "secret fail"
+			});
 
 		}
 
@@ -342,10 +346,11 @@ class QobuzBackground extends Backstage {
 			extype: "album"
 		};
 
-		console.log(
-			"album",
-			this.media
-		);
+		if(DEBUG)
+			console.log(
+				"album",
+				this.media
+			);
 
 		this.mediaHint();
 
@@ -360,10 +365,11 @@ class QobuzBackground extends Backstage {
 			extype: "releases"
 		};
 
-		console.log(
-			"releases",
-			this.media
-		);
+		if(DEBUG)
+			console.log(
+				"releases",
+				this.media
+			);
 
 		this.syncMedia();
 	
@@ -376,10 +382,11 @@ class QobuzBackground extends Backstage {
 			extype: "artist"
 		};
 
-		console.log(
-			"artist",
-			this.media
-		);
+		if(DEBUG)
+			console.log(
+				"artist",
+				this.media
+			);
 
 		this.syncMedia();
 
@@ -396,23 +403,25 @@ class QobuzBackground extends Backstage {
 			extype: "playlist"
 		};
 
-		console.log(
-			"playlist",
-			this.media
-		);
+		if(DEBUG)
+			console.log(
+				"playlist",
+				this.media
+			);
 
 	}
 
 	handleTracklist(dat) {
 
-		if(this.media.extype === "playlist") {
+		if(this.media?.extype === "playlist") {
 
 			this.media.tracks = dat.tracks;
 
-			console.log(
-				"tracklist",
-				this.media
-			);
+			if(DEBUG)
+				console.log(
+					"tracklist",
+					this.media
+				);
 
 		}
 
@@ -422,7 +431,19 @@ class QobuzBackground extends Backstage {
 
 	trackList() {
 
-		return this?.media?.tracks?.items || [];
+		return (this?.media?.tracks?.items || [])
+		.filter(track =>
+			track.streamable);
+	
+	}
+
+	getTrackInfos(track, album) {
+
+		return {
+			title: this.trackTitle(track),
+			album: this.albumTitle(album),
+			artist: (track.performer || track.composer).name
+		};
 	
 	}
 
@@ -446,7 +467,7 @@ class QobuzBackground extends Backstage {
 
 	getCoverUrl(media) {
 
-		return (media.album || this.media)?.image?.small;
+		return (media.album || this.media)?.image?.large;
 
 	}
 

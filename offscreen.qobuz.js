@@ -1,3 +1,6 @@
+import {BaseOffscreenProcessor} from "./common/off.js"
+import {FlacProcessor} from "./common/proc.flac.js"
+
 class QobuzOffscreenProcessor extends BaseOffscreenProcessor {
 
 	constructor() {
