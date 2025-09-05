@@ -1,4 +1,4 @@
-import {browser, DEBUG} from "./vars.js";
+import {browser, DEBUG} from "./common/vars.js";
 
 class FlacProcessor {
 
