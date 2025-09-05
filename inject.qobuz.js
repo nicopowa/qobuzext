@@ -3,7 +3,7 @@
 	const urls = [
 		"/album/get",
 		"/artist/page",
-		"/artist/getReleases", 
+		"/artist/getReleases",
 		// label
 		"/playlist/get?",
 		"/track/getList" // playlist tracks

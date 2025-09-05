@@ -1,5 +1,5 @@
-import {BaseOffscreenProcessor} from "./common/off.js"
-import {FlacProcessor} from "./common/proc.flac.js"
+import {BaseOffscreenProcessor} from "./common/off.js";
+import {FlacProcessor} from "./proc.flac.js";
 
 class QobuzOffscreenProcessor extends BaseOffscreenProcessor {
 
@@ -12,6 +12,8 @@ class QobuzOffscreenProcessor extends BaseOffscreenProcessor {
 	}
 
 	async process(dat, metadata, messageId, cover) {
+
+		// if(DEBUG) console.log("process", taskId);
 
 		return await this.flacProcessor.process(
 			dat,

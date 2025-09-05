@@ -1,9 +1,12 @@
 # QobuzExt
 
-Qobuz downloader web extension  
+Qobuz downloader  
 
 Based on [qobuz-dl](https://github.com/vitiko98/qobuz-dl)  
+
 Rewritten from scratch in vanilla Javascript and turned into a simple web extension.  
+
+[More info](https://nicopr.fr/goodvibes)  
 
 Looking for [TidalExt](https://github.com/nicopowa/tidalext) ?  
 
@@ -40,11 +43,11 @@ Looking for [TidalExt](https://github.com/nicopowa/tidalext) ?
 - Wait for download order
 - Load files one by one
 - Inject metadata & cover
-- Downloads processed file
 
 ## Work in progress
 
-- Refresh page if no data is showing
+- [ToDo](notes.qobuz.md)
+- [ToDo++](common/notes.md)
 - Check extensions page for errors
 - Press Alt+Q to reload extension
 
