@@ -1,4 +1,4 @@
-import {browser, DEBUG} from "./common/vars.js";
+import {browse, DEBUG} from "./common/vars.js";
 import {Backstage} from "./common/back.js";
 import {MD5} from "./md5.js";
 
@@ -6,7 +6,7 @@ class QobuzBackground extends Backstage {
 
 	constructor() {
 
-		super("offscreen.qobuz.html");
+		super();
 
 		this.urlBase = "https://play.qobuz.com/";
 		this.quality = "6";
@@ -68,7 +68,7 @@ class QobuzBackground extends Backstage {
 
 	bundling() {
 
-		browser.webRequest.onCompleted.addListener(
+		browse.webRequest.onCompleted.addListener(
 			this.bundler,
 			{
 				urls: [this.urlBase + "*/bundle.js"]
@@ -81,7 +81,7 @@ class QobuzBackground extends Backstage {
 
 		// if(DEBUG) console.log("bundle");
 
-		browser.webRequest.onCompleted.removeListener(this.bundler);
+		browse.webRequest.onCompleted.removeListener(this.bundler);
 
 		let bundleCode = await (await fetch(res.url)).text();
 
@@ -118,7 +118,7 @@ class QobuzBackground extends Backstage {
 		
 		}
 
-		bundleCode = null;
+		bundleCode = "";
 
 		if(!secrets.size) {
 
@@ -138,9 +138,9 @@ class QobuzBackground extends Backstage {
 		const getFile = ["track", "getFileUrl"];
 
 		const reqs = {
-			format_id: "5", // mp3
+			format_id: "5", // mp3 ?
 			intent: "stream",
-			track_id: "5966783" // randomize
+			track_id: "5966783" // todo randomize
 		};
 
 		const strs = getFile.join("") + Object.entries(reqs)
@@ -416,15 +416,53 @@ class QobuzBackground extends Backstage {
 
 	getMetaData(track, album) {
 
+		// https://wiki.hydrogenaudio.org/index.php?title=Tag_Mapping
+		// https://datatracker.ietf.org/doc/html/rfc5215
+		// https://wiki.xiph.org/VorbisComment
+		
 		return {
+
 			"TITLE": this.trackTitle(track),
+			...(track.version && {
+				"VERSION": track.version
+			}),
 			"ARTIST": track.performer?.name || album?.artist?.name || "Unknown",
+
 			"ALBUM": this.albumTitle(album),
-			"TRACKNUMBER": String(track.track_number || 1),
 			"ALBUMARTIST": album?.artist?.name || "Unknown",
+
+			...(track.copyright && {
+				"COPYRIGHT": track.copyright
+			}),
+
+			...(album.genre && {
+				"GENRE": album.genre.name
+			}),
+
 			"DATE": new Date(album?.release_date_original || 0)
 			.getFullYear(),
-			"TOTALTRACKS": String(album?.tracks_count || "")
+
+			"TRACKNUMBER": String(track.track_number || 1),
+			"TOTALTRACKS": String(album?.tracks_count || ""),
+
+			...(track.isrc && {
+				"ISRC": track.isrc
+			}),
+
+			...(album.upc && {
+				"UPC": album.upc
+			}),
+
+			// URL
+
+			...(track.audio_info?.replaygain_track_gain && {
+				"REPLAYGAIN_TRACK_GAIN": track.audio_info.replaygain_track_gain + " dB"
+			}),
+
+			...(track.audio_info?.replaygain_track_peak && {
+				"REPLAYGAIN_TRACK_PEAK": String(track.audio_info.replaygain_track_peak)
+			})
+
 		};
 	
 	}

@@ -1,4 +1,4 @@
-import {browser, DEBUG} from "./common/vars.js";
+import {browse, DEBUG} from "./common/vars.js";
 
 class FlacProcessor {
 
@@ -15,7 +15,7 @@ class FlacProcessor {
 
 	async process(dat, metadata, taskId, coverDat = null) {
 
-		if(DEBUG) console.log("process", taskId);
+		// if(DEBUG) console.log("process", taskId);
 
 		dat.url = [dat.url].flat();
 
@@ -58,7 +58,7 @@ class FlacProcessor {
 
 			if(progressing !== progress) {
 
-				browser.runtime.sendMessage({
+				browse.runtime.sendMessage({
 					type: "progress",
 					task: taskId, 
 					progress: progressing
