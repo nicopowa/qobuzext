@@ -422,7 +422,7 @@ class QobuzBackground extends Backstage {
 	getCoverUrl(tabId, media) {
 
 		//return (media.album || this.medias.get(tabId))?.image?.large;
-		return (media.image || media?.album.image || this.medias.get(tabId).image)?.large;
+		return (media?.image || media?.album?.image || this.medias.get(tabId)?.image)?.large;
 
 	}
 
