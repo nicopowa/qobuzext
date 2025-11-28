@@ -137,10 +137,24 @@ class QobuzBackground extends Backstage {
 
 		const getFile = ["track", "getFileUrl"];
 
+		const vibes = [
+			"300659650", // Lui Mafuta - Colour Fields
+			"64511322", // Luomo - The Right Wing
+			"12555922", // Ice Cube - You Know How We Do it
+			"154179542", // L'Entourloop - Fi Di Yut
+			"777565", // Bob Marley - War / No More Trouble
+			"100845277", // Nina Simone - Work Song
+			"69987976", // Jacques Brel - Les Bourgeois
+			"90528592", // Luis Mariano - C'est Magnifique
+			"8824465" // Narciso Yepes - Recuerdos De La Alhambra
+		];
+
 		const reqs = {
-			format_id: "5", // mp3 ?
+			// format_id: "5", // mp3 ?
+			format_id: this.quality,
 			intent: "stream",
-			track_id: "5966783" // todo randomize
+			// track_id: "5966783" // todo randomize
+			track_id: vibes[[Math.floor(Math.random() * vibes.length)]]
 		};
 
 		const strs = getFile.join("") + Object.entries(reqs)
@@ -155,7 +169,7 @@ class QobuzBackground extends Backstage {
 				const sig = MD5.hash(`${strs}${unix}${secret}`);
 
 				await this.request(
-					"/" + getFile.join("/"),
+					getFile.join("/"),
 					{
 						request_sig: sig,
 						request_ts: unix,
@@ -163,7 +177,8 @@ class QobuzBackground extends Backstage {
 					}
 				);
 
-				// if(DEBUG) console.log("secret found");
+				if(DEBUG)
+					console.log("secret found");
 
 				this.dat.secret = secret;
 
@@ -201,7 +216,7 @@ class QobuzBackground extends Backstage {
 		
 		const res = await fetch(
 			// keep www
-			`https://www.qobuz.com/api.json/0.2${endpoint}${query}`,
+			`https://www.qobuz.com/api.json/0.2/${endpoint}${query}`,
 			{
 				headers: {
 					"Content-Type": "application/json",
@@ -289,6 +304,8 @@ class QobuzBackground extends Backstage {
 				dat
 			);
 
+		this.mediaHint();
+
 		this.syncPopup();
 
 	}
@@ -336,12 +353,34 @@ class QobuzBackground extends Backstage {
 
 	}
 
-	trackList(tabId) {
+	async getReleaseInfos(releaseId) {
 
-		if(!this.medias.has(tabId))
-			return [];
+		if(DEBUG)
+			console.log(
+				"get release infos",
+				releaseId
+			);
 
-		return (this.medias.get(tabId)?.tracks?.items || [])
+		const releaseInfos = await this.request(
+			"album/get",
+			{
+				album_id: releaseId,
+				offset: 0,
+				limit: 50
+			}
+		);
+
+		//console.log(releaseInfos);
+
+		return releaseInfos;
+
+	}
+
+	trackList(tabId, media) {
+
+		//if(!this.medias.has(tabId)) return [];
+
+		return ((media || this.medias.get(tabId))?.tracks?.items || [])
 		.filter(track =>
 			track.streamable);
 	
@@ -368,7 +407,7 @@ class QobuzBackground extends Backstage {
 		const sig = MD5.hash(`trackgetFileUrlformat_id${quality}intentstreamtrack_id${track.id}${unix}${this.dat.secret}`);
 
 		return await this.request(
-			"/track/getFileUrl",
+			"track/getFileUrl",
 			{
 				request_ts: unix,
 				request_sig: sig,
@@ -382,7 +421,8 @@ class QobuzBackground extends Backstage {
 
 	getCoverUrl(tabId, media) {
 
-		return (media.album || this.medias.get(tabId))?.image?.large;
+		//return (media.album || this.medias.get(tabId))?.image?.large;
+		return (media.image || media?.album.image || this.medias.get(tabId).image)?.large;
 
 	}
 

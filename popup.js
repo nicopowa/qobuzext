@@ -38,10 +38,12 @@ class QobuzPopup extends BasePopup {
 					<img src="${this.media.image.small}"/>
 				</div>` : ""}
 				<div class="album-info">
-					<div class="album-title">${this.media.title}</div>
+					<div class="album-title">${this.media.title}${this.media.version ? ` (${this.media.version})` : ""}</div>
 					<div class="album-artist">${this.media.artist.name}</div>
-					<div class="album-year">${new Date(this.media.release_date_original)
-	.getFullYear()}</div>
+					<div class="album-data">
+						<div class="album-year">${new Date(this.media.release_date_original).getFullYear()}</div>
+						<div class="album-label" data-id="${this.media.label?.id}">${this.media.label?.name}</div>
+					</div>
 				</div>
 				<button class="album-download download-btn" data-type="album" data-id="${this.media.id}"></button>
 			`;
@@ -120,7 +122,9 @@ class QobuzPopup extends BasePopup {
 				<div class="playlist-info">
 					<div class="playlist-name">${this.media.name}</div>
 					<div class="playlist-owner">${this.media.owner.name}</div>
-					<div class="playlist-tracks">${this.media.tracks_count} tracks</div>
+					<div class="playlist-data">
+						<div class="playlist-tracks">${this.media.tracks_count} tracks</div>
+					</div>
 				</div>
 				<button class="playlist-download download-btn" data-type="playlist" data-id="${this.media.id}"></button>
 			`;
@@ -159,7 +163,7 @@ class QobuzPopup extends BasePopup {
 					<div class="track-artist">${(track.performer || track.composer).name}</div>
 					${more ? `<div class="track-album">${track?.album.title}</div>` : ""}
 				</div>
-				<button class="track-download download-btn" data-type="track" data-id="${track.id}"${!track.streamable ? " disabled" : ""}></button>
+				<button class="track-download download-btn" data-type="track" data-id="${track.id}"${track.streamable ? "" : " disabled"}></button>
 			</div>
 		`;
 	
@@ -173,11 +177,14 @@ class QobuzPopup extends BasePopup {
 					<img src="${release.image.small}"/>
 				</div>` : ""}
 				<div class="release-info">
-					<div class="release-title">${release.title}</div>
-					<div class="release-year">${new Date(release.dates.original)
-	.getFullYear()}</div>
+					<div class="release-title">${release.title}${release.version ? ` (${release.version})` : ""}</div>
+					<div class="release-data">
+						<div class="release-year">${new Date(release.dates.original).getFullYear()}</div>
+						<div class="release-label" data-id="${release.label?.id}">${release.label?.name}</div>
+					</div>
+					<div class="release-about">${release.release_type.replace("mini", "")} - ${release.tracks_count} track${release.tracks_count !== 1 ? "s" : ""}</div>
 				</div>
-				<button class="release-download download-btn" data-type="release" data-id="${release.id}" disabled></button>
+				<button class="release-download download-btn" data-type="release" data-id="${release.id}" ${release.rights.streamable ? "" : " disabled"}></button>
 			</div>
 		`;
 	
