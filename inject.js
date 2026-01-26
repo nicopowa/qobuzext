@@ -4,7 +4,7 @@
 		"/album/get",
 		"/artist/page",
 		"/artist/getReleases",
-		// label
+		"/label/get",
 		"/playlist/get?",
 		"/track/getList" // playlist tracks
 		// search results

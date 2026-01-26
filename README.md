@@ -6,7 +6,7 @@ Based on [qobuz-dl](https://github.com/vitiko98/qobuz-dl)
 
 Rewritten from scratch in vanilla Javascript and turned into a simple web extension.  
 
-[More info](https://nicopr.fr/goodvibes)  
+[Infos & Changelog](https://nicopr.fr/goodvibes)  
 
 Looking for [TidalExt](https://github.com/nicopowa/tidalext) ?  
 
@@ -14,7 +14,6 @@ Looking for [TidalExt](https://github.com/nicopowa/tidalext) ?
 ## Informations
 
 - First testing version
-- Chromium based browsers only
 - Active subscription required
 
 
@@ -67,7 +66,7 @@ Unsigned extensions can not be permanently installed on standard Firefox release
 - Select `qobuzext.zip`
 
 
-#### Note
+## Notes
 
 Firefox does not support [Offscreen API](https://developer.chrome.com/docs/extensions/reference/api/offscreen), extension automatically falls back to [hidden tabs](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/tabs/hide).
 
@@ -76,7 +75,7 @@ Firefox does not support [Offscreen API](https://developer.chrome.com/docs/exten
 
 - Open [Web Player](https://play.qobuz.com)
 - Connect account
-- Navigate to album or release page
+- Navigate to album or artist page
 - Click extension icon
 
 
@@ -94,11 +93,10 @@ Firefox does not support [Offscreen API](https://developer.chrome.com/docs/exten
 
 ## Work in progress
 
-- [ToDo](notes.md)
-- [ToDo++](common/notes.md)
 - Check extensions page for errors
 - Press Alt+Q to reload extension
-
+- [ToDo](notes.md)
+- [ToDo++](common/TODO.md)
 
 ## Permissions
 

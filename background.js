@@ -29,7 +29,7 @@ class QobuzBackground extends Backstage {
 			"/album/get": this.handleAlbum,
 			"/artist/page": this.handleArtist,
 			"/artist/getReleases": this.handleReleases,
-			// label
+			"/label/get": this.handleLabel,
 			"/playlist/get?": this.handlePlaylist,
 			"/track/getList": this.handleTracklist
 			// search results
@@ -79,7 +79,7 @@ class QobuzBackground extends Backstage {
 
 	async bundle(res) {
 
-		// if(DEBUG) console.log("bundle");
+		//if(DEBUG) console.log("bundle");
 
 		browse.webRequest.onCompleted.removeListener(this.bundler);
 
@@ -153,7 +153,7 @@ class QobuzBackground extends Backstage {
 			// format_id: "5", // mp3 ?
 			format_id: this.quality,
 			intent: "stream",
-			// track_id: "5966783" // todo randomize
+			// track_id: "5966783" // dummy
 			track_id: vibes[[Math.floor(Math.random() * vibes.length)]]
 		};
 
@@ -241,6 +241,7 @@ class QobuzBackground extends Backstage {
 
 		dat = {
 			...dat,
+			tracks: dat?.tracks?.items || [],
 			extype: "album"
 		};
 
@@ -312,12 +313,34 @@ class QobuzBackground extends Backstage {
 
 	handleLabel(tab, dat) {
 
+		dat = {
+			...dat,
+			extype: "label"
+		};
+
+		this.medias.set(
+			tab.id,
+			dat
+		);
+
+		if(DEBUG)
+			console.log(
+				tab.id,
+				dat.extype,
+				dat
+			);
+
+		this.mediaHint();
+
+		this.syncPopup();
+
 	}
 
 	handlePlaylist(tab, dat) {
 
 		dat = {
 			...dat,
+			tracks: dat?.tracks?.items || [],
 			extype: "playlist"
 		};
 
@@ -333,64 +356,86 @@ class QobuzBackground extends Backstage {
 				dat
 			);
 
-	}
-
-	handleTracklist(tab, dat) {
-
-		if(this.media?.extype === "playlist") {
-
-			this.media.tracks = dat.tracks;
-
-			if(DEBUG)
-				console.log(
-					"tracklist",
-					this.media
-				);
-
-		}
+		this.mediaHint();
 
 		this.syncPopup();
 
 	}
 
-	async getReleaseInfos(releaseId) {
+	handleTracklist(tab, dat) {
+
+		const media = this.medias.get(tab.id);
+
+		if(media?.extype === "playlist") {
+
+			const newTracks = dat.tracks.items;
+
+			for(const newTrack of newTracks)
+				if(!media.tracks.find(hasTrack =>
+					hasTrack.id === newTrack.id))
+					media.tracks.push(newTrack);
+
+			if(DEBUG)
+				console.log(
+					"tracklist",
+					media
+				);
+
+			this.mediaHint();
+
+			this.syncPopup();
+
+		}
+
+	}
+
+	async getRelease(releaseId) {
 
 		if(DEBUG)
 			console.log(
-				"get release infos",
+				"get release",
 				releaseId
 			);
 
-		const releaseInfos = await this.request(
+		const releaseData = await this.request(
 			"album/get",
 			{
 				album_id: releaseId,
 				offset: 0,
-				limit: 50
+				limit: 250 // was 50
 			}
 		);
 
-		//console.log(releaseInfos);
+		//console.log(releaseData);
 
-		return releaseInfos;
+		return {
+			...releaseData,
+			tracks: releaseData?.tracks?.items || []
+		};
 
 	}
 
-	trackList(tabId, media) {
+	trackList(media) {
 
-		//if(!this.medias.has(tabId)) return [];
-
-		return ((media || this.medias.get(tabId))?.tracks?.items || [])
+		return (media?.tracks || [])
 		.filter(track =>
 			track.streamable);
 	
 	}
 
-	getTrackInfos(track, album) {
+	playlistInfos(list) {
+
+		return {
+			listName: list.name,
+			tracks: list.tracks_count
+		};
+		
+	}
+
+	getTrackInfos(track) {
 
 		return {
 			title: this.trackTitle(track),
-			album: this.albumTitle(album),
 			artist: (track.performer || track.composer).name
 		};
 	
@@ -419,23 +464,25 @@ class QobuzBackground extends Backstage {
 	
 	}
 
-	getCoverUrl(tabId, media) {
+	getCoverUrl(media) {
 
-		//return (media.album || this.medias.get(tabId))?.image?.large;
-		return (media?.image || media?.album?.image || this.medias.get(tabId)?.image)?.large;
+		return (media?.image || media?.album?.image)?.large;
 
 	}
 
-	getFilePath(track, album) {
+	getFilePath(track, album, rules) {
 
 		// album?.artists.length === 0
 		// album?.subtitle.toLowerCase() === "various artists"
 		const variousArtists = album.artist?.name.toLowerCase()
 		.startsWith("various");
 
-		const artistName = this.sanitize(variousArtists ? "Various Artists" : album?.artist?.name || album?.composer?.name);
+		const artistName = (variousArtists ? "Various Artists" : album?.artist?.name || album?.composer?.name).replaceAll(
+			"/",
+			"-"
+		); // Hells Bells
 
-		const albumTitle = this.sanitize(this.albumTitle(album));
+		const albumTitle = this.albumTitle(album);
 
 		const albumYear = new Date(album.release_date_original || 0)
 		.getFullYear();
@@ -446,11 +493,23 @@ class QobuzBackground extends Backstage {
 			"0"
 		);
 
-		const fileName = this.sanitize(`${trackNum}. ${variousArtists ? track?.performer.name + " -" : ""} ${this.trackTitle(track)}`);
+		let filePath = this.sanitize(`${artistName}/${albumTitle} (${albumYear})/${trackNum}. ${variousArtists ? track?.performer.name + " - " : ""}${this.trackTitle(track)}`);
 		
+		if(rules && rules.list) {
+
+			const trackIndex = rules.indx.toString()
+			.padStart(
+				rules.tracks.toString().length,
+				"0"
+			);
+
+			filePath = this.sanitize(`${rules.listName}/${trackIndex}. ${artistName} - ${this.trackTitle(track)}`);
+
+		}
+
 		const fileExt = ".flac";
 
-		return `Qobuz/${artistName}/${albumTitle} (${albumYear})/${fileName}${fileExt}`;
+		return `Qobuz/${filePath}${fileExt}`;
 
 	}
 
@@ -463,45 +522,49 @@ class QobuzBackground extends Backstage {
 		return {
 
 			"TITLE": this.trackTitle(track),
-			...(track.version && {
+			...(track.version ? {
 				"VERSION": track.version
-			}),
+			} : {}),
+			
 			"ARTIST": track.performer?.name || album?.artist?.name || "Unknown",
 
 			"ALBUM": this.albumTitle(album),
 			"ALBUMARTIST": album?.artist?.name || "Unknown",
 
-			...(track.copyright && {
+			...(track.copyright ? {
 				"COPYRIGHT": track.copyright
-			}),
+			} : {}),
 
-			...(album.genre && {
+			...(album.genre ? {
 				"GENRE": album.genre.name
-			}),
+			} : {}),
 
-			"DATE": new Date(album?.release_date_original || 0)
-			.getFullYear(),
+			...(album?.release_date_original ? {
+				"DATE": new Date(album.release_date_original)
+				.getFullYear(),
+				"ORIGINALDATE": album.release_date_original
+			} : {}),
 
 			"TRACKNUMBER": String(track.track_number || 1),
-			"TOTALTRACKS": String(album?.tracks_count || ""),
+			"TOTALTRACKS": String(album?.tracks_count || 1),
 
-			...(track.isrc && {
+			...(track.isrc ? {
 				"ISRC": track.isrc
-			}),
+			} : {}),
 
-			...(album.upc && {
+			...(album.upc ? {
 				"UPC": album.upc
-			}),
+			} : {}),
 
 			// URL
 
-			...(track.audio_info?.replaygain_track_gain && {
+			...(track.audio_info?.replaygain_track_gain ? {
 				"REPLAYGAIN_TRACK_GAIN": track.audio_info.replaygain_track_gain + " dB"
-			}),
+			} : {}),
 
-			...(track.audio_info?.replaygain_track_peak && {
+			...(track.audio_info?.replaygain_track_peak ? {
 				"REPLAYGAIN_TRACK_PEAK": String(track.audio_info.replaygain_track_peak)
-			})
+			} : {})
 
 		};
 	

@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "QobuzExt",
-	"version": "1.4",
+	"version": "1.5",
 	"description": "〜ヽ(⌐￭_￭)ノ♪♬",
 	"author": "Nico Pr",
 	"homepage_url": "https://github.com/nicopowa/qobuzext",
@@ -9,7 +9,13 @@
 		"default_popup": "popup.html",
 		"default_title": "QobuzExt"
 	},
-	"permissions": ["storage", "downloads", "webRequest", "offscreen"],
+	"permissions": [
+		"storage",
+		"downloads",
+		"webRequest",
+		"offscreen",
+		"commands"
+	],
 	"host_permissions": ["https://*.qobuz.com/*"],
 	"background": {
 		"service_worker": "background.js",
