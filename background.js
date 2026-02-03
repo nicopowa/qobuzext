@@ -237,6 +237,20 @@ class QobuzBackground extends Backstage {
 	
 	}
 
+	sameTab(tab, dat) {
+
+		const cur = this.medias.get(tab.id) || {
+			extype: "void",
+			id: 0
+		};
+
+		if(cur.extype === dat.extype && cur.id === dat.id)
+			return cur;
+
+		return null;
+	
+	}
+
 	handleAlbum(tab, dat) {
 
 		dat = {
@@ -318,6 +332,22 @@ class QobuzBackground extends Backstage {
 			extype: "label"
 		};
 
+		const pool = this.sameTab(
+			tab,
+			dat
+		);
+
+		if(pool) {
+
+			//if(DEBUG) console.log("pool");
+
+			// use limit, offset, total ?
+			dat.albums.items.unshift(...pool.albums.items.filter(album =>
+				!dat.albums.items.some(versus =>
+					versus.id === album.id)));
+		
+		}
+
 		this.medias.set(
 			tab.id,
 			dat
@@ -386,6 +416,13 @@ class QobuzBackground extends Backstage {
 			this.syncPopup();
 
 		}
+
+	}
+
+	getArtist(artist) {
+
+		return artist.releases.flatMap(releaseType =>
+			releaseType.items);
 
 	}
 

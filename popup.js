@@ -75,6 +75,7 @@ class QobuzPopup extends BasePopup {
 				<div class="artist-info">
 					<div class="artist-name">${this.media.name.display}</div>
 				</div>
+				<button class="artist-download download-btn" data-type="artist" data-id="${this.media.id}"></button>
 			`;
 
 		this.elements.mediawrap.classList.remove(
@@ -104,10 +105,16 @@ class QobuzPopup extends BasePopup {
 	}
 
 	renderLabel() {
+
+		const count = this.media.albums.items.length;
+		const total = this.media.albums.total;
 		
 		this.elements.mediainfo.innerHTML = `
 				<div class="label-info">
 					<div class="label-name">${this.media.name}</div>
+					<div class="count-data">
+						<div class="count-items">${count} / ${total} releases<br/>${count < total ? "please scroll down" : "parsing complete"}</div>
+					</div>
 				</div>
 			`;
 
@@ -134,12 +141,16 @@ class QobuzPopup extends BasePopup {
 
 	renderPlaylist() {
 
+		const count = this.media.tracks.length;
+		const total = this.media.tracks_count;
+
+		//<div class="playlist-owner">${this.media.owner.name}</div>
+
 		this.elements.mediainfo.innerHTML = `
 				<div class="playlist-info">
 					<div class="playlist-name">${this.media.name}</div>
-					<div class="playlist-owner">${this.media.owner.name}</div>
-					<div class="playlist-data">
-						<div class="playlist-tracks">${this.media.tracks.length} / ${this.media.tracks_count} tracks${this.media.tracks.length < this.media.tracks_count ? " - scroll down please" : ""}</div>
+					<div class="count-data">
+						<div class="count-items">${count} / ${total} tracks<br/>${count < total ? "please scroll down" : "parsing complete"}</div>
 					</div>
 				</div>
 				<button class="playlist-download download-btn" data-type="playlist" data-id="${this.media.id}"></button>

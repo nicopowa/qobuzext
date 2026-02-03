@@ -13,7 +13,7 @@ Looking for [TidalExt](https://github.com/nicopowa/tidalext) ?
 
 ## Informations
 
-- First testing version
+- Work in progress
 - Active subscription required
 
 
