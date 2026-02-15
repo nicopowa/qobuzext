@@ -1,4 +1,5 @@
 import {BasePopup} from "./common/pops.js";
+import {Type} from "./common/vars.js";
 
 class QobuzPopup extends BasePopup {
 
@@ -10,6 +11,12 @@ class QobuzPopup extends BasePopup {
 
 	updateQualityOptions() {
 
+		if(this.media.extype !== Type.ALBUM) {
+
+			return;
+		
+		}
+
 		let maxQuality = 27;
 
 		if(this.media.maximum_sampling_rate <= 96)
@@ -19,13 +26,8 @@ class QobuzPopup extends BasePopup {
 			maxQuality = 6;
 
 		document.querySelectorAll("input[name='quality']")
-		.forEach(qualityRadio => {
-
-			const hasQuality = (+qualityRadio.value) <= maxQuality;
-
-			qualityRadio.disabled = !hasQuality;
-
-		});
+		.forEach(qualityRadio =>
+			(qualityRadio.disabled = !((+qualityRadio.value) <= maxQuality)));
 	
 	}
 
@@ -36,7 +38,8 @@ class QobuzPopup extends BasePopup {
 					<div class="album-title">${this.media.title}${this.media.version ? ` (${this.media.version})` : ""}</div>
 					<div class="album-artist">${this.media.artist.name}</div>
 					<div class="album-data">
-						<div class="album-year">${new Date(this.media.release_date_original).getFullYear()}</div>
+						<div class="album-year">${new Date(this.media.release_date_original)
+	.getFullYear()}</div>
 						<div class="album-label" data-id="${this.media.label?.id}">${this.media.label?.name}</div>
 					</div>
 				</div>
@@ -70,10 +73,19 @@ class QobuzPopup extends BasePopup {
 	}
 
 	renderArtist() {
+
+		const tracks = this.media.releases.reduce(
+			(sum, rel) =>
+				sum + rel.tracks_count,
+			0
+		);
 		
 		this.elements.mediainfo.innerHTML = `
 				<div class="artist-info">
 					<div class="artist-name">${this.media.name.display}</div>
+					<div class="count-data">
+						<div class="count-items">${this.media.releases.length} releases (${tracks} tracks)<br/>${this.media.hasMore ? "please scroll down" : "parsing complete"}</div>
+					</div>
 				</div>
 				<button class="artist-download download-btn" data-type="artist" data-id="${this.media.id}"></button>
 			`;
@@ -82,10 +94,7 @@ class QobuzPopup extends BasePopup {
 			"hide"
 		);
 
-		const releases = this.media.releases.flatMap(releaseType =>
-			releaseType.items);
-
-		this.elements.medialist.innerHTML = releases
+		this.elements.medialist.innerHTML = this.media.releases
 		.map(release =>
 			this.createReleaseItemHTML(release))
 		.join("");
@@ -108,12 +117,17 @@ class QobuzPopup extends BasePopup {
 
 		const count = this.media.albums.items.length;
 		const total = this.media.albums.total;
+		const tracks = this.media.albums.items.reduce(
+			(sum, rel) =>
+				sum + rel.tracks_count,
+			0
+		);
 		
 		this.elements.mediainfo.innerHTML = `
 				<div class="label-info">
 					<div class="label-name">${this.media.name}</div>
 					<div class="count-data">
-						<div class="count-items">${count} / ${total} releases<br/>${count < total ? "please scroll down" : "parsing complete"}</div>
+						<div class="count-items">${count} / ${total} releases (${tracks} tracks)<br/>${count < total ? "please scroll down" : "parsing complete"}</div>
 					</div>
 				</div>
 			`;
@@ -126,7 +140,10 @@ class QobuzPopup extends BasePopup {
 
 		this.elements.medialist.innerHTML = releases
 		.map(release =>
-			this.createAlbumItemHTML(release))
+			this.createAlbumItemHTML(
+				release,
+				true
+			))
 		.join("");
 
 		this.elements.media.querySelectorAll(".download-btn")
@@ -143,8 +160,6 @@ class QobuzPopup extends BasePopup {
 
 		const count = this.media.tracks.length;
 		const total = this.media.tracks_count;
-
-		//<div class="playlist-owner">${this.media.owner.name}</div>
 
 		this.elements.mediainfo.innerHTML = `
 				<div class="playlist-info">
@@ -177,14 +192,15 @@ class QobuzPopup extends BasePopup {
 
 	}
 
-	createAlbumItemHTML(release) {
+	createAlbumItemHTML(release, showArtist = false) {
 
 		return `
 			<div class="mediaitem">
 				<div class="release-info">
-					<div class="release-title">${release.title}${release.version ? ` (${release.version})` : ""}</div>
+					<div class="release-title">${showArtist ? release.artist.name + " - " : ""}${release.title}${release.version ? ` (${release.version})` : ""}</div>
 					<div class="release-data">
-						<div class="release-year">${new Date(release.release_date_original).getFullYear()}</div>
+						<div class="release-year">${new Date(release.release_date_original)
+	.getFullYear()}</div>
 						<div class="release-label" data-id="${release.label?.id}">${release.label?.name}</div>
 					</div>
 					<div class="release-about">album - ${release.tracks_count} track${release.tracks_count !== 1 ? "s" : ""}</div>
@@ -218,10 +234,14 @@ class QobuzPopup extends BasePopup {
 				<div class="release-info">
 					<div class="release-title">${release.title}${release.version ? ` (${release.version})` : ""}</div>
 					<div class="release-data">
-						<div class="release-year">${new Date(release.dates.original).getFullYear()}</div>
+						<div class="release-year">${new Date(release.dates.original)
+	.getFullYear()}</div>
 						<div class="release-label" data-id="${release.label?.id}">${release.label?.name}</div>
 					</div>
-					<div class="release-about">${release.release_type.replace("mini", "")} - ${release.tracks_count} track${release.tracks_count !== 1 ? "s" : ""} - ${release.audio_info.maximum_bit_depth}/${Math.round(release.audio_info.maximum_sampling_rate)}</div>
+					<div class="release-about">${release.release_type.replace(
+		"mini",
+		""
+	)} - ${release.tracks_count} track${release.tracks_count !== 1 ? "s" : ""} - ${release.audio_info.maximum_bit_depth}/${Math.round(release.audio_info.maximum_sampling_rate)}</div>
 				</div>
 				<button class="release-download download-btn" data-type="release" data-id="${release.id}" ${release.rights.streamable ? "" : " disabled"}></button>
 			</div>
@@ -231,8 +251,6 @@ class QobuzPopup extends BasePopup {
 
 }
 
-window.addEventListener(
-	"load",
-	() =>
-		new QobuzPopup()
-);
+export {
+	QobuzPopup
+};

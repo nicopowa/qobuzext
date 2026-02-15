@@ -1,4 +1,4 @@
-import {browse, DEBUG} from "./common/vars.js";
+import {browse, DEBUG, Type} from "./common/vars.js";
 import {Backstage} from "./common/back.js";
 import {MD5} from "./md5.js";
 
@@ -9,6 +9,7 @@ class QobuzBackground extends Backstage {
 		super();
 
 		this.urlBase = "https://play.qobuz.com/";
+		this.apiBase = "https://www.qobuz.com/api.json/0.2/";
 		this.quality = "6";
 
 		this.dat = {
@@ -19,7 +20,7 @@ class QobuzBackground extends Backstage {
 			secret: ""
 		};
 
-		this.heads("https://www.qobuz.com/api.json/0.2/*");
+		this.heads(this.apiBase + "*");
 
 		this.bundler = this.bundle.bind(this);
 		this.bundling();
@@ -32,12 +33,32 @@ class QobuzBackground extends Backstage {
 			"/label/get": this.handleLabel,
 			"/playlist/get?": this.handlePlaylist,
 			"/track/getList": this.handleTracklist
-			// search results
+			// search results page
 		});
 	
 	}
 
+	async liftoff() {
+
+		await super.liftoff();
+
+		const secret = await this.getSetting("secret");
+
+		if(secret) {
+
+			if(DEBUG)
+				console.log("recall secret");
+
+			this.dat.secret = secret;
+			this.dat.auth = true;
+		
+		}
+	
+	}
+
 	heading(evt) {
+
+		//if(DEBUG) console.log("api", evt.url.replace(this.apiBase, ""));
 
 		const appIdHeader = evt.requestHeaders.find(reqHeader =>
 			reqHeader.name === "X-App-Id")?.value;
@@ -83,9 +104,14 @@ class QobuzBackground extends Backstage {
 
 		browse.webRequest.onCompleted.removeListener(this.bundler);
 
-		let bundleCode = await (await fetch(res.url)).text();
+		let bundleCode = await (await fetch(
+			res.url,
+			{
+				cache: "no-store"
+			}
+		)).text();
 
-		const secrets = new Set();
+		let secrets = [];
 		const seeds = [...bundleCode.matchAll(/[a-z]\.initialSeed\("([\w=]+)",window\.utimezone\.([a-z]+)\)/g)];
 
 		for(const [, seed, timezone] of seeds) {
@@ -105,9 +131,9 @@ class QobuzBackground extends Backstage {
 						-44
 					));
 
-					if(decoded.length === 32 && /^[a-f0-9]+$/.test(decoded)) {
+					if(/^[a-f0-9]{32}$/.test(decoded)) {
 
-						secrets.add(decoded);
+						secrets.push(decoded);
 					
 					}
 				
@@ -120,7 +146,7 @@ class QobuzBackground extends Backstage {
 
 		bundleCode = "";
 
-		if(!secrets.size) {
+		if(!secrets.length) {
 
 			this.icon.back("#ce2626");
 
@@ -132,10 +158,6 @@ class QobuzBackground extends Backstage {
 			return;
 		
 		}
-
-		const unix = Math.floor(Date.now() / 1000);
-
-		const getFile = ["track", "getFileUrl"];
 
 		const vibes = [
 			"300659650", // Lui Mafuta - Colour Fields
@@ -149,22 +171,30 @@ class QobuzBackground extends Backstage {
 			"8824465" // Narciso Yepes - Recuerdos De La Alhambra
 		];
 
-		const reqs = {
-			// format_id: "5", // mp3 ?
-			format_id: this.quality,
-			intent: "stream",
-			// track_id: "5966783" // dummy
-			track_id: vibes[[Math.floor(Math.random() * vibes.length)]]
-		};
-
-		const strs = getFile.join("") + Object.entries(reqs)
-		.map(([k, v]) =>
-			k + v)
-		.join("");
+		// always last ?
+		secrets = Array.from(new Set(secrets))
+		.reverse();
 
 		for(const secret of secrets) {
 
 			try {
+
+				const unix = Math.floor(Date.now() / 1000);
+
+				const getFile = ["track", "getFileUrl"];
+
+				const reqs = {
+					// format_id: "5", // mp3 ?
+					format_id: this.quality,
+					intent: "stream",
+					// track_id: "5966783" // dummy
+					track_id: vibes[[Math.floor(Math.random() * vibes.length)]]
+				};
+
+				const strs = getFile.join("") + Object.entries(reqs)
+				.map(([k, v]) =>
+					k + v)
+				.join("");
 
 				const sig = MD5.hash(`${strs}${unix}${secret}`);
 
@@ -178,18 +208,32 @@ class QobuzBackground extends Backstage {
 				);
 
 				if(DEBUG)
-					console.log("secret found");
+					console.log("found secret");
 
 				this.dat.secret = secret;
+
+				await browse.storage.local.set({
+					secret: secret
+				});
 
 				this.dat.auth = true;
 
 				this.ready();
 
-				continue;
+				// was continue;
+				break;
 			
 			}
-			catch(err) {} // silent
+			catch(err) {
+
+				// silent
+				if(DEBUG)
+					console.log(
+						"invalid secret",
+						secret
+					);
+			
+			}
 		
 		}
 
@@ -215,8 +259,7 @@ class QobuzBackground extends Backstage {
 			? "?" + new URLSearchParams(params) : "";
 		
 		const res = await fetch(
-			// keep www
-			`https://www.qobuz.com/api.json/0.2/${endpoint}${query}`,
+			`${this.apiBase}${endpoint}${query}`,
 			{
 				headers: {
 					"Content-Type": "application/json",
@@ -240,7 +283,7 @@ class QobuzBackground extends Backstage {
 	sameTab(tab, dat) {
 
 		const cur = this.medias.get(tab.id) || {
-			extype: "void",
+			extype: Type.VOID,
 			id: 0
 		};
 
@@ -256,7 +299,7 @@ class QobuzBackground extends Backstage {
 		dat = {
 			...dat,
 			tracks: dat?.tracks?.items || [],
-			extype: "album"
+			extype: Type.ALBUM
 		};
 
 		this.medias.set(
@@ -279,24 +322,31 @@ class QobuzBackground extends Backstage {
 
 	handleReleases(tab, dat) {
 
-		dat = {
-			...dat,
-			extype: "releases"
-		};
+		const cur = this.mediaTab(tab);
 
-		this.medias.set(
-			tab.id,
-			dat
-		);
+		if(cur.extype === Type.ARTIST) {
 
-		if(DEBUG)
-			console.log(
-				tab.id,
-				dat.extype,
-				dat
-			);
+			cur.releases.push(...dat.items.filter(releasing =>
+				!cur.releases.some(release =>
+					release.id === releasing.id)));
 
-		this.syncPopup();
+			cur.hasMore = dat.has_more;
+
+			if(DEBUG)
+				console.log(
+					tab.id,
+					cur.extype,
+					cur
+				);
+
+			this.syncPopup();
+
+		}
+		else {
+
+			console.warn("WHO DAT ?");
+		
+		}
 	
 	}
 
@@ -304,8 +354,18 @@ class QobuzBackground extends Backstage {
 
 		dat = {
 			...dat,
-			extype: "artist"
+			extype: Type.ARTIST
 		};
+
+		const releasesTypes = ["album", "live", "compilation", "epSingle", "other"];
+
+		const releasesKeeps = dat.releases.filter(releaseSection =>
+			releasesTypes.includes(releaseSection.type))
+		.flatMap(releaseSection =>
+			releaseSection.items.filter(release =>
+				release.rights?.streamable)); // || release.streamable
+
+		dat.releases = releasesKeeps;
 
 		this.medias.set(
 			tab.id,
@@ -329,20 +389,18 @@ class QobuzBackground extends Backstage {
 
 		dat = {
 			...dat,
-			extype: "label"
+			extype: Type.LABEL
 		};
 
-		const pool = this.sameTab(
+		const cur = this.sameTab(
 			tab,
 			dat
 		);
 
-		if(pool) {
-
-			//if(DEBUG) console.log("pool");
+		if(cur) {
 
 			// use limit, offset, total ?
-			dat.albums.items.unshift(...pool.albums.items.filter(album =>
+			dat.albums.items.unshift(...cur.albums.items.filter(album =>
 				!dat.albums.items.some(versus =>
 					versus.id === album.id)));
 		
@@ -371,7 +429,7 @@ class QobuzBackground extends Backstage {
 		dat = {
 			...dat,
 			tracks: dat?.tracks?.items || [],
-			extype: "playlist"
+			extype: Type.LIST
 		};
 
 		this.medias.set(
@@ -394,13 +452,11 @@ class QobuzBackground extends Backstage {
 
 	handleTracklist(tab, dat) {
 
-		const media = this.medias.get(tab.id);
+		const media = this.mediaTab(tab);
 
-		if(media?.extype === "playlist") {
+		if(media.extype === Type.LIST) {
 
-			const newTracks = dat.tracks.items;
-
-			for(const newTrack of newTracks)
+			for(const newTrack of dat.tracks.items)
 				if(!media.tracks.find(hasTrack =>
 					hasTrack.id === newTrack.id))
 					media.tracks.push(newTrack);
@@ -419,20 +475,11 @@ class QobuzBackground extends Backstage {
 
 	}
 
-	getArtist(artist) {
-
-		return artist.releases.flatMap(releaseType =>
-			releaseType.items);
-
-	}
-
 	async getRelease(releaseId) {
 
-		if(DEBUG)
-			console.log(
-				"get release",
-				releaseId
-			);
+		//if(DEBUG) console.log("get release", releaseId);
+
+		// was try/catch
 
 		const releaseData = await this.request(
 			"album/get",
@@ -514,15 +561,13 @@ class QobuzBackground extends Backstage {
 		const variousArtists = album.artist?.name.toLowerCase()
 		.startsWith("various");
 
-		const artistName = (variousArtists ? "Various Artists" : album?.artist?.name || album?.composer?.name).replaceAll(
-			"/",
-			"-"
-		); // Hells Bells
-
-		const albumTitle = this.albumTitle(album);
+		const artistName = this.sanitize(variousArtists ? "Various Artists" : album?.artist?.name || album?.composer?.name);
+		const albumTitle = this.sanitize(this.albumTitle(album));
 
 		const albumYear = new Date(album.release_date_original || 0)
 		.getFullYear();
+
+		const albumPart = album.media_count > 1 && track.media_number || 0; // media_count
 
 		const trackNum = String(track.track_number || 1)
 		.padStart(
@@ -530,9 +575,13 @@ class QobuzBackground extends Backstage {
 			"0"
 		);
 
-		let filePath = this.sanitize(`${artistName}/${albumTitle} (${albumYear})/${trackNum}. ${variousArtists ? track?.performer.name + " - " : ""}${this.trackTitle(track)}`);
-		
+		const trackTitle = this.sanitize(`${variousArtists ? track?.performer.name + " - " : ""}${this.trackTitle(track)}`);
+
+		let filePath = `${artistName}/${albumTitle} (${albumYear})/${albumPart ? `CD${albumPart}/` : ""}${trackNum}. ${trackTitle}`;
+
 		if(rules && rules.list) {
+
+			const listName = this.sanitize(rules.listName);
 
 			const trackIndex = rules.indx.toString()
 			.padStart(
@@ -540,7 +589,7 @@ class QobuzBackground extends Backstage {
 				"0"
 			);
 
-			filePath = this.sanitize(`${rules.listName}/${trackIndex}. ${artistName} - ${this.trackTitle(track)}`);
+			filePath = `${listName}/${trackIndex}. ${artistName} - ${trackTitle}`;
 
 		}
 
@@ -609,4 +658,8 @@ class QobuzBackground extends Backstage {
 
 }
 
-new QobuzBackground();
+//new QobuzBackground();
+
+export {
+	QobuzBackground
+};

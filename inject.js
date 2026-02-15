@@ -6,7 +6,7 @@
 		"/artist/getReleases",
 		"/label/get",
 		"/playlist/get?",
-		"/track/getList" // playlist tracks
+		"/track/getList"
 		// search results
 	];
 

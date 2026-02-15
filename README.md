@@ -6,7 +6,7 @@ Based on [qobuz-dl](https://github.com/vitiko98/qobuz-dl)
 
 Rewritten from scratch in vanilla Javascript and turned into a simple web extension.  
 
-[Infos & Changelog](https://nicopr.fr/goodvibes)  
+[Infos & Changelogs](https://nicopr.fr/goodvibes)  
 
 Looking for [TidalExt](https://github.com/nicopowa/tidalext) ?  
 
@@ -19,11 +19,17 @@ Looking for [TidalExt](https://github.com/nicopowa/tidalext) ?
 
 ## How to install
 
-Clone repository, or download & extract archive.  
+
+### Choose one
+
+- Download latest release
+- Download code zip archive
+- Clone repository
 
 
 ### Chromium based browsers
 
+- Extract extension zip
 - Open Extensions tab
 - Enable **Developer mode**
 - Click **Load unpacked**
@@ -38,37 +44,47 @@ QobuzExt is not published on AMO (addons.mozilla.org).
 Unsigned extensions can not be permanently installed on standard Firefox release.  
 
 
-#### Build extension
+#### Replace manifest
 
 - Delete `manifest.json`
 - Rename `manifest.firefox.json` to `manifest.json`
-- Open terminal in extension directory
-- Run this command :  
-	`tar -a -c -f qobuzext.zip manifest.json *.html *.js common`
 
 
 #### Load extension temporarily (standard Firefox)
 
-- Type `about:debugging#/runtime/this-firefox` into the address bar and press Enter
+- Paste `about:debugging#/runtime/this-firefox` into the address bar and press Enter
 - Click **Load Temporary Add-on**
-- Select `qobuzext.zip`
+- Browse extension directory
+- Select `manifest.json`
 
 
-#### Use a different Firefox edition
+#### Or use a different Firefox edition
 
 - Install Firefox [Developer](https://firefox.com/download/all/desktop-developer/) or [Nightly](https://firefox.com/download/all/desktop-nightly/)
-- Type `about:config` into the address bar and press Enter
+- Paste `about:config` into the address bar and press Enter
 - Accept the warning message
 - Search for `xpinstall.signatures.required`
 - Click the toggle button to set its value to **false**
-- Type `about:addons` into the address bar and press Enter
+- Open terminal in extension directory
+- Create extension zip package
+	- Windows  
+		```
+		tar -a -c -f qobuzext.zip manifest.json *.html *.js common/*.js common/*.css
+		```
+	- Linux  
+		```
+		apt install zip
+		zip -r qobuzext.zip manifest.json *.html *.js common -i "*.js" "*.css" "*.json" "*.html"
+		```
+- Paste `about:addons` into the address bar and press Enter
 - Click the cog button, then **Install Add-on From File**
 - Select `qobuzext.zip`
 
+#### Notes
 
-## Notes
+- Edge Windows 11 bug : popup not showing, broken keyboard shortcut, extension is unresponsive and takes forever to reload  
 
-Firefox does not support [Offscreen API](https://developer.chrome.com/docs/extensions/reference/api/offscreen), extension automatically falls back to [hidden tabs](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/tabs/hide).
+- Firefox does not support [Offscreen API](https://developer.chrome.com/docs/extensions/reference/api/offscreen), extension automatically falls back to [hidden tabs](https://developer.mozilla.org/docs/Mozilla/Add-ons/WebExtensions/API/tabs/hide).
 
 
 ## How to use
@@ -95,7 +111,7 @@ Firefox does not support [Offscreen API](https://developer.chrome.com/docs/exten
 
 - Check extensions page for errors
 - Press Alt+Q to reload extension
-- [ToDo](notes.md)
+- [ToDo](TODO.md)
 - [ToDo++](common/TODO.md)
 
 ## Permissions
